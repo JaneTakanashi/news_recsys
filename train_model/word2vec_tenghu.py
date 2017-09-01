@@ -13,12 +13,14 @@ import numpy as np
 import os
 import tensorflow as tf
 import time
+import datetime
 
+corpus_file = '../data/corpus/luru_fetched_news_processed.txt'
 # set the global parameters here:
-timestamp = str(int(time.time()))
+
 flags = tf.app.flags
-flags.DEFINE_string('data_path', './corpus_seg_all.txt', 'path for training data')
-flags.DEFINE_string('save_path', os.path.join('./runs', timestamp, 'checkpoints'), 'path for saving data')
+flags.DEFINE_string('data_path', corpus_file, 'path for training data')
+flags.DEFINE_string('save_path', '../model/Word2Vec/', 'path for saving data')
 flags.DEFINE_integer('min_count', 2, 'term occurs less than this is ignored')
 flags.DEFINE_integer('size', 50, 'embedding dimensions')
 flags.DEFINE_integer('window', 4, 'terms occur within a window-neighborhood of a term')
@@ -45,5 +47,6 @@ if __name__ == '__main__':
     # save the trained model
     if not os.path.exists(FLAGS.save_path):
         os.makedirs(FLAGS.save_path)
-    model.save(os.path.join(FLAGS.save_path, 'UScities.model'))
-    model.wv.save_word2vec_format(os.path.join(FLAGS.save_path, 'UScities.model.bin'), binary=True)
+    cur_time = datetime.datetime.now().strftime("%m-%d_%H:%M:%S")
+    model.save(os.path.join(FLAGS.save_path, 'luru_news_'+cur_time+'.model'))
+    model.wv.save_word2vec_format(os.path.join(FLAGS.save_path, 'luru_news_'+cur_time+'.model.bin'), binary=True)

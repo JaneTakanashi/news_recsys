@@ -10,6 +10,9 @@ from recsys import recsys
 from utilities.User_Info import UserInfo
 from utilities.News_Info import NewsInfo
 
+def show_rec_title(demo, rec_list):
+    for id in rec_list:
+        print demo.news_dict[id].title
 
 if __name__ == '__main__':
 
@@ -22,23 +25,17 @@ if __name__ == '__main__':
     demo = recsys(lda_model_file, dict_file, word2vec_model_file)
 
     # add user
-    print 'add user-------------------------------'
-    user_pre = np.zeros(50)
-    demo.add_user(['1002', user_pre])
-    demo.search_user('1002')
+    topic_num = 50
+    user_pre = np.zeros(topic_num)
 
-    # add news
-    for i in range(50):
-        news = [str(i), 'the 91th birthday year for Mr.Jiang','It is Mr.Jiang\'s ......Aug 17, 2017',23333333]
-        demo.add_news(news)
-    demo.search_news('1')
+    # the number of save recent read news
+    recent_read_sum = 10
 
+    user_id = '321443'
+    demo.user_entered([user_id], topic_num)
+
+    rec_list = demo.get_recommend(user_id)
+    show_rec_title(demo, rec_list)
 
     # click news
-    demo.update_user_op('1002', 1503124610, ['click', '1'])
-    demo.search_user('1002')
-
-    rec_list = demo.get_recommend('1002')
-    print rec_list
-
-    demo.delete()
+    demo.update_user_op('1002', 1503124610, '000f023ebc8e0fb51e22eb2679c269fd')
