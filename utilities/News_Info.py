@@ -24,13 +24,16 @@ class NewsInfo:
         self.news_id = news_info[0]
         self.title = news_info[1]
         self.content = news_info[2]
-        self.pub_time = news_info[3]
+        self.pub_time = int(news_info[3])
 
         self.calc_title_vec(word2vec_model, stop_words)
         self.calc_topic_dist(lda_model, stop_words)
 
     def calc_title_vec(self, word2vec_model, stop_words):
         title_list = utilities.process_title(self.title, stop_words)
+        # add content
+        content_list = utilities.process_title(self.content, stop_words)
+        title_list += content_list
 
         word_vec = []
         for word in title_list:

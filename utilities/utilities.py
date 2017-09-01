@@ -4,18 +4,19 @@ import csv
 import sys
 import re
 import time
+import math
 import jieba
 import gensim
 import copy
-import User_Info
-import News_Info
 from copy import deepcopy
 import numpy as np
+from User_Info import UserInfo
+from News_Info import NewsInfo
 from Queue import PriorityQueue as PQueue
 from gensim import utils, matutils
 from gensim.models import word2vec
 
-def read_stopwords(stop_word_loc = '../data/aux/stop_words'):
+def read_stopwords(stop_word_loc = './data/aux/stop_words'):
     """read stop words from a stop words vocabulary
 
     Args:
@@ -175,7 +176,7 @@ def calc_topic_vec(news_list, LDA_model,corpus_dictionary, word2vec_model, stop_
         title_vec = np.mean(word_vec, axis = 0).tolist()
         news_list[index].title_vec = title_vec
 
-def find_user_topic_top_3(user):
+def find_user_topic_top_n(user, top_n):
     """for using LDA recommendation, first I find the top 3 topics the user most interest in,
     and then I choose some news relative to these 3 topics with a certain proportion
 
@@ -183,17 +184,21 @@ def find_user_topic_top_3(user):
             userInfo object
 
         Returns:
-            a list of top 3 topic index
+            a list of top n topic index
 
     """
     queue = PQueue()
     topic_vec = user.topic_vec.tolist()
     for i in range(len(topic_vec)):
         queue.put((-1 * topic_vec[i], i))
-    return [queue.get()[1], queue.get()[1], queue.get()[1]]
+    ret = []
+    for _ in range(top_n):
+        ret.append(queue.get([1]))
+    return ret
 
-def find_topic_top_news(today_news_list, topic, num, TOPIC_NUM):
-    """find the most related news in given topic
+def find_topic_top_news(user, news_dict, num):
+    """find the most related news in topic model
+       using dot prouct of user_topic_vec and news_topic_dist
 
         Args:
             today_news_list: news list
@@ -204,16 +209,20 @@ def find_topic_top_news(today_news_list, topic, num, TOPIC_NUM):
             a list of news id of most related ones
     """
     queue = PQueue()
-    for i in range(len(today_news_list)):
-        item = today_news_list[i]
-        if(len(item.topic_vec) < TOPIC_NUM):
-            continue
-        queue.put((item.topic_vec[topic] * -1, i))
-
+    user_topic_vec = np.array(user.topic_vec)
+    print user.topic_vec
+    for id in user.candidate_list:
+        if id not in user.read_list and id not in user.recommend_list:
+            if news_dict.has_key(id):
+                news_topic_dist = np.array(news_dict[id].topic_dist)
+                correlation = np.dot(user_topic_vec, news_topic_dist)
+                queue.put((correlation * -1, id))
     top_list = []
     cnt = 0
+    print '------------lda recommend---------------'
     while not queue.empty() and cnt < num:
         item = queue.get()
+        print item
         top_list.append(item[1])
         cnt += 1
     return top_list
@@ -235,18 +244,30 @@ def find_nearest_news(user, news_dict, num):
     user_vec = []
     for news_info in user.recent_read:
         user_vec.append(news_info.title_vec)
+    print user_vec
+    # print matutils.unitvec(np.array(user_vec).mean(axis=0))
 
-    for id, news_info in news_dict.items():
-        title_vec = news_info.title_vec
-        #cos_dist = np.dot(user_vec_mean, title_vec)
-        cos_dist = np.dot(matutils.unitvec(np.array(user_vec).mean(axis=0)),
-                   matutils.unitvec(np.array(title_vec)))
+    for id in user.candidate_list:
+        if id not in user.read_list and id not in user.recommend_list:
+            if news_dict.has_key(id):
+                title_vec = news_dict[id].title_vec
+                if isinstance(title_vec, float) and math.isnan(title_vec):
+                    continue
 
-        queue.put((cos_dist * -1, id))
+                if len(user.recent_read) == 0:
+                    word2vec_dim = len(title_vec)
+                    zero_vec = [0. for n in range(word2vec_dim)]
+                    user_vec = [zero_vec, zero_vec]
+                #cos_dist = np.dot(user_vec_mean, title_vec)
+                cos_dist = np.dot(matutils.unitvec(np.array(user_vec).mean(axis=0)),
+                           matutils.unitvec(np.array(title_vec)))
+                queue.put((cos_dist * -1, id))
     top_list = []
     cnt = 0
+    print '------------word2vec recommend---------------'
     while not queue.empty() and cnt < num:
         item = queue.get()
+        print item
         top_list.append(item[1])
         cnt += 1
     return top_list
